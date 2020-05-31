@@ -9,7 +9,7 @@ channelY7 = []
 while ser.in_waiting==0:
     print("waiting for pyboard...")
 while True:
-    #ser.write(b"WeitereMessungen \r\n")
+    #ser.write(b"WeitereMessungen \n")
     recv = ser.readline()
     recv = str(recv)
     recvs = recv.replace("\\r\\n'","")
