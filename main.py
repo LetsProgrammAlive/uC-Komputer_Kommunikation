@@ -4,10 +4,13 @@ import uarray
 import pyb
 
 locker = uasyncio.Lock()
-total_measurements = 0
+total_measurements = 20
 schon_gemessen = 0
 
+
 async def empfanger(port):
+    global total_measurements
+    global schon_gemessen
     swriter = uasyncio.StreamWriter(port)
     sreader = uasyncio.StreamReader(port)
     while True:
@@ -19,12 +22,18 @@ async def empfanger(port):
             await swriter.awrite("ShowMeasurements\r\n")
         
         await swriter.awrite("end\r\n")
+
+        if schon_gemessen == total_measurements :
+            await swriter.awrite("endeMessungen\r\n")
+            break
         locker.release()
         await uasyncio.sleep(1)        
 
 
 
 async def start_measurment(pin, port, Anzahl_measurments, timeout):
+    global total_measurements
+    global schon_gemessen
     usbwriter = uasyncio.StreamWriter(port)
     
     adc = pyb.ADC(pyb.Pin(pin))
@@ -34,12 +43,14 @@ async def start_measurment(pin, port, Anzahl_measurments, timeout):
         adc_ = adc.read()
         adcstr = pin+" "+str(adc_)+ "\r\n"
         await usbwriter.awrite(adcstr)
+        schon_gemessen += 1
         locker.release()
         await uasyncio.sleep(timeout/Anzahl_measurments)   
         
 async def main():
     usb = pyb.USB_VCP()
     pyb.Pin("EN_3V3").on()
+    
 
     task_ =  uasyncio.create_task(start_measurment("X3",usb,15, 10))
     task__ = uasyncio.create_task(start_measurment("Y7",usb,5, 5))

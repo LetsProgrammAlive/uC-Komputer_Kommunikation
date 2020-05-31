@@ -9,7 +9,7 @@ channelY7 = []
 while ser.in_waiting==0:
     print("waiting for pyboard...")
 while True:
-    #ser.write(b"WeitereMessungen \n")
+    #ser.write(b"WeitereMessungen \r\n")
     recv = ser.readline()
     recv = str(recv)
     recvs = recv.replace("\\r\\n'","")
@@ -29,6 +29,8 @@ while True:
         print(channelX3)
         print("measurements von Pin Y7: ")
         print(channelY7)
+    elif recvs == "b'endeMessungen":
+        break
     else:
         print(recvs)
 
