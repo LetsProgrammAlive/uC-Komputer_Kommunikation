@@ -1,4 +1,4 @@
-# main.py -- put your code her
+# main.py -- put your code here
 import uasyncio
 import uarray
 import pyb
