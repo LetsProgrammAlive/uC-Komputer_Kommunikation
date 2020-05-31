@@ -1,36 +1,56 @@
-#uBoard main Code
-import machine
-import time
+# main.py -- put your code her
+import uasyncio
+import uarray
+import pyb
 
-led = machine.Pin(2, machine.Pin.OUT) #pyb.LED(2) on Pyboard
+locker = uasyncio.Lock()
+total_measurements = 0
+schon_gemessen = 0
 
-#print("start")
-
-def main():
-    #Aufbau Asynchron Kommunikation
-    #Kanal 0 für USB kommunikation
-    uart = machine.UART(0)
-    uart.init(115200, timeout = 3000)
-    
-    #Zeit in milliSekunde
-    vorherigeZeit = time.ticks_ms()
-    
-    #while Schleife, damit das Programm unendlich läuft
+async def empfanger(port):
+    swriter = uasyncio.StreamWriter(port)
+    sreader = uasyncio.StreamReader(port)
     while True:
-        #empfangt die Befehlen des Komputers
-        if uart.any():
-            pcBefehl = uart.readline()
-            if pcBefehl is not None:
-                strPcBefehl = str(pcBefehl.decode('utf-8'))
-                uart.write("Der Komputer hat den Befehl ' " + strPcBefehl.strip("\r\n") + " ' gesendet" )
+        await locker.acquire()
+        befehl = await sreader.readline()
+        befehl_ = str(befehl).replace("\\r\\n'", "")
         
-        #Actuelle Zeit in ms() 
-        neueZeit = time.ticks_ms()
+        if befehl_ == "b'zeigeMeasurments":
+            await swriter.awrite("ShowMeasurements\r\n")
         
-        #jede Sekunde etwas schreiben
-        if time.ticks_diff(neueZeit, vorherigeZeit) > 1000:
-            vorherigeZeit = neueZeit
-            uart.write("es ist " + str(neueZeit) + " on the micro Board"+ "\r\n")
-            led.value(not led.value()) #led.toggle() on Pyboard
+        await swriter.awrite("end\r\n")
+        locker.release()
+        await uasyncio.sleep(1)        
+
+
+
+async def start_measurment(pin, port, Anzahl_measurments, timeout):
+    usbwriter = uasyncio.StreamWriter(port)
+    
+    adc = pyb.ADC(pyb.Pin(pin))
+
+    for i in range(Anzahl_measurments):
+        await locker.acquire()
+        adc_ = adc.read()
+        adcstr = pin+" "+str(adc_)+ "\r\n"
+        await usbwriter.awrite(adcstr)
+        locker.release()
+        await uasyncio.sleep(timeout/Anzahl_measurments)   
         
-main()  
+async def main():
+    usb = pyb.USB_VCP()
+    pyb.Pin("EN_3V3").on()
+
+    task_ =  uasyncio.create_task(start_measurment("X3",usb,15, 10))
+    task__ = uasyncio.create_task(start_measurment("Y7",usb,5, 5))
+    befehl = uasyncio.create_task(empfanger(usb))
+
+    print("Thread principal démaré")
+    await task_
+    await task__
+    await befehl
+    
+    empfanger(usb)
+    print("fin du programme")
+
+uasyncio.run(main())
