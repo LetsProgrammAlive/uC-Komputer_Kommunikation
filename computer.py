@@ -42,7 +42,7 @@ while True:
     else:
         print(recvs)                          #wenn nichts passiert dann ist vermutlich einen Fehler aufgetreten... wir zeigen die Meldung mit print
 
-    ser.write(b'zeigeMeasurments\r\n')
+    ser.write(b"zeigeMeasurments\r\n")
     
         
         
